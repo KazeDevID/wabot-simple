@@ -1,0 +1,14 @@
+{
+  "name": "wabot-simple",
+  "version": "1.0.0",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+        "start": "node index.js --use-pairing-code"
+    },
+  "author": "KazeDevID",
+  "description": "This project is a simple WhatsApp bot using @whiskeysockets/baileys",
+  "dependencies": {
+        "@whiskeysockets/baileys": "^6.7.16"
+    }
+}
