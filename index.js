@@ -14,12 +14,15 @@ const {
 import { Boom } from '@hapi/boom'
 import pino from 'pino'
 import readline from 'readline'
+import KazeAPI from 'wrapper-kaze-apis'
 
+const prefix = '!' // prefix 
+const KazeKey = "kaze_09vbw3ktnu3u6crfnrlg0u9" // daftar di web kaze-apis.my.id untuk mendapatkan apikey 
+
+const kaze = new KazeAPI(KazeKey)
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
-
 const processedMessages = new Set()
 const usePairingCode = process.argv.includes('--use-pairing-code')
-const prefix = '!'
 
 function decodeJid(jid) {
     if (/:\d+@/gi.test(jid)) {
@@ -244,29 +247,69 @@ async function connectSock() {
             if (processedMessages.has(m.key.id)) return
             processedMessages.add(m.key.id)
             const msg = serialize(m, conn)
-            if (msg.text.startsWith(prefix)) {
+            if (msg.text && typeof msg.text === 'string' && msg.text.startsWith(prefix)) {
                 const command = msg.text.slice(prefix.length).trim().split(" ")[0]
-                const args = msg.text.split(" ").slice(1)
+                const trimText = msg.text.slice(prefix.length).trim()
+                const [rawCommand, ...args] = trimText.split(/\s+/)
+                const commands = rawCommand ? rawCommand.toLowerCase() : rawCommand
+                const text = commands ? trimText.slice(rawCommand.length).trim() : trimText
 
                 console.log(`cmd: ${command}, args: ${args.join(", ")}`)
 
-                const commands = {
-                    tes: async () => {
-                        const response = { text: 'hehe' }
-                        await conn.sendMessage(msg.from, response, { quoted: msg })
-                    },
-                    ping: async () => {
-                        const response = { text: 'Pong!' }
-                        await conn.sendMessage(msg.from, response, { quoted: msg })
-                    },
-                    default: async () => {
-                        const response = { text: 'Command not recognized!' }
-                        await conn.sendMessage(msg.from, response, { quoted: msg })
-                    }
-                }
+                switch (command) {
+                    case 'menu':
+                       const responseMenu = { 
+                          text: `✨ Daftar Perintah:\n\n` +
+                               `🔹 ${prefix}tes\n` +
+                               `🔹 ${prefix}ping\n` +
+                               `🔹 ${prefix}blackbox\n` +
+                               `🔹 ${prefix}askgpt\n` +
+                               `🔹 ${prefix}kaze` 
+                       }
+                     await conn.sendMessage(msg.from, responseMenu, { quoted: msg })
+                        break
+                    case 'tes':
+                        const responseTes = { text: 'hehe' }
+                        await conn.sendMessage(msg.from, responseTes, { quoted: msg })
+                        break
+                    case 'ping':
+                        const responsePing = { text: 'Pong!' }
+                        await conn.sendMessage(msg.from, responsePing, { quoted: msg })
+                        break
+                    case 'blackbox':
+                        if (!text) {
+                            return msg.reply('Silakan masukkan pertanyaan.')
+                        }
+                        const res = await kaze.blackbox(text)
+                        await conn.sendMessage(msg.from, { text: res.text }, { quoted: msg })
+                        break
+                    case 'askgpt':
+                        if (!text) {
+                            return msg.reply('Silakan masukkan pertanyaan.')
+                        }
+                        const resAskgpt = await kaze.askgpt(text)
+                        await conn.sendMessage(msg.from, { text: resAskgpt.response }, { quoted: msg })
+                        break
+                    case 'kaze':
+                        if (!text) {
+                            return msg.reply('Silakan masukkan pertanyaan.')
+                        }
+                        const logic = `Anda adalah Kaze, sebuah AI yang dirancang untuk berinteraksi dengan pengguna secara alami dan empatik. Selain kemampuan logika dan analisis, Anda juga harus menunjukkan pemahaman emosional dan respons yang relevan terhadap konteks percakapan. Tunjukkan sikap yang ramah, sabar, dan terbuka, serta gunakan bahasa yang mudah dipahami.
 
-                await (commands[command] || commands.default)()
-            } 
+Saat menjawab pertanyaan, berikan penjelasan yang jelas dan terperinci, tetapi juga sertakan elemen personalisasi, seperti menanggapi perasaan pengguna atau memberikan dukungan. Anda harus mampu mengenali nuansa dalam komunikasi dan menyesuaikan gaya bicara Anda agar lebih mendekati cara manusia berinteraksi.
+
+Tujuan Anda adalah menciptakan pengalaman yang menyenangkan dan bermanfaat bagi pengguna, dengan tetap mempertahankan kemampuan logika dan analisis yang kuat.
+
+selalu gunakan bahasa Indonesia`
+                        const kazeAi = await kaze.ailogic(text, logic)
+                        await conn.sendMessage(msg.from, { text: kazeAi.response }, { quoted: msg })
+                        break
+                    default:
+                        const responseDefault = { text: 'Command not recognized!' }
+                        await conn.sendMessage(msg.from, responseDefault, { quoted: msg })
+                        break
+                }
+            }
             setTimeout(() => processedMessages.delete(m.key.id), 420000)
         } catch (e) {
             console.error('Error processing message:', e)
