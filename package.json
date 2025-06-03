@@ -9,7 +9,7 @@
   "author": "KazeDevID",
   "description": "This project is a simple WhatsApp bot using @whiskeysockets/baileys",
   "dependencies": {
-        "@whiskeysockets/baileys": "^6.7.16",
+        "@whiskeysockets/baileys": "^6.7.17",
         "wrapper-kaze-apis": "^1.0.0-cjs"
     }
 }
